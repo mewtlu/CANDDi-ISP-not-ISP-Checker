@@ -6,8 +6,8 @@ This program is _supposed_ to decide whether a huge string of csv data contains 
 
 ## Usage
 
-`node main.js <row> <debug level>`
-Where row and debug level are optional.
+`node main.js <row> <debug level>`  
+(where row and debug level are optional.)
 
 ## Known bugs
 
