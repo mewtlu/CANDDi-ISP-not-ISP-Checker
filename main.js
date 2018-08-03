@@ -1,6 +1,6 @@
 const fs = require('fs');
 const levensteinDistance = require('./lib/levenshtein').getEditDistance;
-const csv = require('csv');
+const csvParse = require('csv-parse/lib/sync');
 
 const cwdPath = process.cwd();
 
@@ -19,23 +19,23 @@ for (var f in realTypesFileData) {
 }
 
 var dataBuffer = fs.readFileSync(cwdPath + "/data.csv");
-var dataFileData = dataBuffer.toString().replace(/"/g, '').split('\n');
+var dataFileData = csvParse(dataBuffer.toString(), {
+	columns: true
+});
 
 var labels = {};
 var typesAttempt = {};
-var distanceBoundary = 21000;
+var distanceThreshhold = 21000;
 
 for (var r in dataFileData) {
-	var data = dataFileData[r].split(',');
+	var data = dataFileData[r];
 
-	var companyName = data[1];
-	var label = data[8];
+	var companyName = data.CompanyName;
+	var label = data['label'];
 
 	if (!label || !companyName) {
 		continue;
 	}
-
-	companyName = companyName.replace('~~', ',');
 
 	if (!labels[label]) {
 		labels[label] = [];
@@ -43,8 +43,9 @@ for (var r in dataFileData) {
 	labels[label].push(companyName);
 }
 
-var ISPRegEx = /([0-9]{1,3}(\.| )){3}[0-9]{1,3}/;
+var ISPRegEx = /([0-9]{1,3}(\.| )[a-z]{3} ?){3}[0-9]{1,3}/;
 var companyRegEx = /\(c[0-9]{6,}\)/;
+var matched = {};
 
 for (var l in labels) {
 	var match = 0;
@@ -63,6 +64,10 @@ for (var l in labels) {
 
 		if (last && !isISP) {
 			totalDistance += levensteinDistance(last, labels[l][c]);
+			if (!matched[labels[l]]) {
+				matched[labels[l]] = [];
+			}
+			matched[labels[l]].push(labels[l][c]);
 		}
 
 		last = labels[l][c];
@@ -80,11 +85,12 @@ for (var l in labels) {
 		*/
 	}
 
-	if (totalDistance <= distanceBoundary) {
+	if (totalDistance <= distanceThreshhold) {
 		console.log('Label ' + l + ' is an ISP. Certainty: ' + totalDistance + '. Example: ' + labels[l][c])
 	} else {
 		console.log('Label ' + l + ' is a company. Certainty: ' + totalDistance + '. Example: ' + labels[l][c])
 	}
+	console.log(matched[0])
 	//console.log('Similarity: ' + totalDistance);
 	/*
 	if (match >= 0) {
