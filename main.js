@@ -12,15 +12,15 @@ const cwdPath = process.cwd();
  *	for now let's just leave at at 0.67 so we hopefully don't
  *	miss any?
  *
-const companyLikelinessThreshold = 0.69;
  */
+//const companyLikelinessThreshold = 0.69;
 const companyLikelinessThreshold = 0.67;
 
-var realTypesBuffer = fs.readFileSync(cwdPath + "/types.csv");
+var realTypesBuffer = fs.readFileSync(cwdPath + "/data/types.csv");
 var realTypesFileData = realTypesBuffer.toString().split('\n');;
 var realTypes = {};
 
-var dataBuffer = fs.readFileSync(cwdPath + "data/fr.csv");
+var dataBuffer = fs.readFileSync(cwdPath + "/data/fr.csv");
 var dataFileData = csvParse(dataBuffer.toString(), { columns: true });
 var labels = {};
 var typesAttempt = {};
@@ -30,6 +30,7 @@ var loopCounter = 0;
 /* goodCompanies is the list of labels we believe to contain companies, not ISPs/others */
 var goodCompanies = [];
 
+/* Generate realTypes for later comparison */
 for (var f in realTypesFileData) {
 	var labelType = realTypesFileData[f].split('    ');
 
@@ -53,10 +54,11 @@ for (var r in dataFileData) {
 	if (!labels[label]) {
 		labels[label] = [];
 	}
+
 	labels[label].push(companyName);
 }
 
-console.log('Company list created.');
+console.log('Company list created.', labels);
 
 console.log('-- Companies:')
 
