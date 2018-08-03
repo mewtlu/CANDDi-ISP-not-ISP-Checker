@@ -1,4 +1,8 @@
 const fs = require('fs');
+const csvParse = require('csv-parse/lib/sync');
+const dataManip = require('./lib/dataManip');
+const similarity = dataManip.similarity;
+const ratioUnwanted = dataManip.ratioUnwanted;
 const cwdPath = process.cwd();
 
 var realTypesBuffer = fs.readFileSync(cwdPath + "/types.csv");
@@ -16,15 +20,19 @@ for (var f in realTypesFileData) {
 }
 
 var dataBuffer = fs.readFileSync(cwdPath + "/data.csv");
-var dataFileData = dataBuffer.toString().replace('"', '').split('\n');
+var dataFileData = csvParse(dataBuffer.toString(), {
+	columns: true
+});
 var labels = {};
 var typesAttempt = {};
 
-for (var r in dataFileData) {
-	var data = dataFileData[r].split(',');
+console.log('Read data file.');
 
-	var companyName = data[1];
-	var label = data[8];
+for (var r in dataFileData) {
+	var data = dataFileData[r];
+
+	var companyName = data['CompanyName'];
+	var label = data['label'];
 
 	if (!label || !companyName) {
 		continue;
@@ -36,35 +44,30 @@ for (var r in dataFileData) {
 	labels[label].push(companyName);
 }
 
-var ISPRegEx = /([0-9]{1,3}(.| ))[3]/;
+console.log('List of values created.');
+
 var companyRegEx = /\(c[0-9]{6,}\)/;
 
+console.log('-- Companies:')
 for (var l in labels) {
-	var match = 0;
 	var total = 0;
 
-	if (l > 40) {
+	/*
+	if (l != 40) continue;
+	*/
+	if (l > 150) {
 		break;
 	}
 
-	for (var c in labels[l]) {
-		total++;
-		var isISP = ISPRegEx.test(labels[l][c]);
-		var isCompany = companyRegEx.test(labels[l][c]);
-		if(l==38 && isISP && !isCompany) console.log(labels[l][c], isISP, !isCompany)
-		if (isISP && !isCompany) {
-			// looks like ISP
-			match++;
-		} else {
-			// looks like company
-			match--;
-		}
-	}
+	var labelsSimilarity = similarity(labels[l]);
+	var ratioValuesIPs = ratioUnwanted(labels[l], 0);
 
-	if (match >= 0) {
-		console.log('Label ' + l + ' is a ISP. Certainty: ' + Math.round(100 * Math.abs(match) / total) + '%. Example: ' + labels[l][c])
+	var averageGuess = 1 - Math.round(100 * (labelsSimilarity + ratioValuesIPs) / 2) / 100;
+	if (averageGuess >= 0.69) {
+		console.log('', l);
+		//console.log('Label ' + l + ' is a company. Certainty: ' + 100 * averageGuess + '%. Example: ' + labels[l][0])
 	} else {
-		console.log('Label ' + l + ' is a company. Certainty: ' + Math.round(100 * Math.abs(match) / total) + '%. Example: ' + labels[l][c])
+		//console.log('Label ' + l + ' is an ISP. Certainty: ' + 100 * averageGuess + '%. Example: ' + labels[l][0])
 	}
-	console.log(total, match)
 }
+console.log('-- Done')
