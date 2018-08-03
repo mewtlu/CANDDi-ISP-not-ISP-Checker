@@ -14,7 +14,8 @@ const cwdPath = process.cwd();
  *
  */
 //const companyLikelinessThreshold = 0.69;
-const companyLikelinessThreshold = 0.67;
+const IPsThreshold = 0.10;
+const similarityThreshold = 0.70;
 
 var realTypesBuffer = fs.readFileSync(cwdPath + "/data/types.csv");
 var realTypesFileData = realTypesBuffer.toString().split('\n');;
@@ -31,6 +32,7 @@ var loopCounter = 0;
 
 var oneRowOnly = process.argv[2];
 var DEBUG = process.argv[3];
+var max = process.argv[4];
 
 if (DEBUG === undefined) {
 	if (oneRowOnly) {
@@ -38,6 +40,11 @@ if (DEBUG === undefined) {
 	} else {
 		DEBUG = false;
 	}
+}
+
+if (max === undefined) {
+	//max = Infinity;
+	max = 450;
 }
 
 /* goodCompanies is the list of labels we believe to contain companies, not ISPs/others */
@@ -88,21 +95,24 @@ for (var l in labels) {
 		}
 	}
 
-	if (l > 150) {
+	if (l > max) {
 		break;
 	}
 
 	var labelsSimilarity = similarity(labels[l]);
 	var ratioValuesIPs = ratioUnwanted(labels[l], DEBUG);
 
-	var averageGuess = Math.round(100 - (100 * (labelsSimilarity + ratioValuesIPs) / 2)) / 100;
-	var aboveThreshold = averageGuess >= companyLikelinessThreshold;
+	var averageGuess = Math.round((100 * (labelsSimilarity + ratioValuesIPs) / 2)) / 100;
+	var similarityBelowThreshold = labelsSimilarity <= similarityThreshold;
+	var IPsBelowThreshold = ratioValuesIPs <= IPsThreshold;
+	var belowThreshold = similarityBelowThreshold && IPsBelowThreshold;
 
 	if (DEBUG) {
-		console.log('\n- DEBUG: Label ' + l + ' scored ' + Math.round(100 * averageGuess) / 100 + ', which is ' + (aboveThreshold ? 'above' : 'below') + ' the threshold and therefore a' + (aboveThreshold ? ' company' : 'n ISP') + '.');
+		console.log(IPsBelowThreshold, belowThreshold)
+		console.log('\n- DEBUG: Label ' + l + ' scored (S:' + labelsSimilarity + ', I:' + ratioValuesIPs + '), which is ' + (belowThreshold ? 'below' : 'above') + ' the threshold and therefore a' + (belowThreshold ? ' company' : 'n ISP') + '.');
 	}
 
-	if (aboveThreshold) {
+	if (belowThreshold) {
 		/* Company */
 		goodCompanies.push(l);
 		//console.log(l);
