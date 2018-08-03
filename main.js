@@ -20,12 +20,25 @@ var realTypesBuffer = fs.readFileSync(cwdPath + "/data/types.csv");
 var realTypesFileData = realTypesBuffer.toString().split('\n');;
 var realTypes = {};
 
-var dataBuffer = fs.readFileSync(cwdPath + "/data/fr.csv");
+const inCountry = 'fr';
+
+var dataBuffer = fs.readFileSync(cwdPath + '/data/' + inCountry + '.csv');
 var dataFileData = csvParse(dataBuffer.toString(), { columns: true });
 var labels = {};
 var typesAttempt = {};
 var companyRegEx = /\(c[0-9]{6,}\)/;
 var loopCounter = 0;
+
+var oneRowOnly = process.argv[2];
+var DEBUG = process.argv[3];
+
+if (DEBUG === undefined) {
+	if (oneRowOnly) {
+		DEBUG = true;
+	} else {
+		DEBUG = false;
+	}
+}
 
 /* goodCompanies is the list of labels we believe to contain companies, not ISPs/others */
 var goodCompanies = [];
@@ -58,25 +71,38 @@ for (var r in dataFileData) {
 	labels[label].push(companyName);
 }
 
-console.log('Company list created.', labels);
+console.log('Company list created.');
 
-console.log('-- Companies:')
+//console.log('-- Companies:')
 
 for (var l in labels) {
 	var total = 0;
 
 	/*
-	if (l != 40) continue;
+	if (l != 16) continue;
+	DEBUG = true;
 	*/
+	if (oneRowOnly) {
+		if (l != oneRowOnly) {
+			continue;
+		}
+	}
+
 	if (l > 150) {
 		break;
 	}
 
 	var labelsSimilarity = similarity(labels[l]);
-	var ratioValuesIPs = ratioUnwanted(labels[l], 0);
+	var ratioValuesIPs = ratioUnwanted(labels[l], DEBUG);
 
-	var averageGuess = 1 - Math.round(100 * (labelsSimilarity + ratioValuesIPs) / 2) / 100;
-	if (averageGuess >= companyLikelinessThreshold) {
+	var averageGuess = Math.round(100 - (100 * (labelsSimilarity + ratioValuesIPs) / 2)) / 100;
+	var aboveThreshold = averageGuess >= companyLikelinessThreshold;
+
+	if (DEBUG) {
+		console.log('\n- DEBUG: Label ' + l + ' scored ' + Math.round(100 * averageGuess) / 100 + ', which is ' + (aboveThreshold ? 'above' : 'below') + ' the threshold and therefore a' + (aboveThreshold ? ' company' : 'n ISP') + '.');
+	}
+
+	if (aboveThreshold) {
 		/* Company */
 		goodCompanies.push(l);
 		//console.log(l);
@@ -87,8 +113,20 @@ for (var l in labels) {
 	}
 }
 
-for (c in goodCompanies) {
+var companiesCSVStr = '';
 
+for (c in goodCompanies) {
+	companiesCSVStr += goodCompanies[c] + '\n';
 }
 
-console.log('-- Done')
+var outPath = cwdPath + '/out/' + inCountry + '-result.csv';
+
+fs.writeFile(outPath, companiesCSVStr, function(err) {
+    if (err) {
+        console.log('Error saving file:\n', err);
+    }
+
+    console.log('Companies saved to ' + outPath + '.');
+
+	console.log('-- Done with debug level ' + DEBUG + '.');
+});
