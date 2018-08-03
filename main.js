@@ -1,7 +1,8 @@
 const fs = require('fs');
-const levensteinDistance = require('./lib/levenshtein').getEditDistance;
 const csvParse = require('csv-parse/lib/sync');
-
+const dataManip = require('./lib/dataManip');
+const similarity = dataManip.similarity;
+const ratioUnwanted = dataManip.ratioUnwanted;
 const cwdPath = process.cwd();
 
 var realTypesBuffer = fs.readFileSync(cwdPath + "/types.csv");
@@ -22,15 +23,15 @@ var dataBuffer = fs.readFileSync(cwdPath + "/data.csv");
 var dataFileData = csvParse(dataBuffer.toString(), {
 	columns: true
 });
-
 var labels = {};
 var typesAttempt = {};
-var distanceThreshhold = 21000;
+
+console.log('Read data file.');
 
 for (var r in dataFileData) {
 	var data = dataFileData[r];
 
-	var companyName = data.CompanyName;
+	var companyName = data['CompanyName'];
 	var label = data['label'];
 
 	if (!label || !companyName) {
@@ -43,60 +44,30 @@ for (var r in dataFileData) {
 	labels[label].push(companyName);
 }
 
-var ISPRegEx = /([0-9]{1,3}(\.| )[a-z]{3} ?){3}[0-9]{1,3}/;
+console.log('List of values created.');
+
 var companyRegEx = /\(c[0-9]{6,}\)/;
-var matched = {};
 
+console.log('-- Companies:')
 for (var l in labels) {
-	var match = 0;
 	var total = 0;
-	var totalDistance = 0;
-	var last;
 
-	if (l > 40) {
+	/*
+	if (l != 40) continue;
+	*/
+	if (l > 150) {
 		break;
 	}
 
-	for (var c in labels[l]) {
-		total++;
-		var isISP = ISPRegEx.test(labels[l][c]);
-		var isCompany = companyRegEx.test(labels[l][c]);
+	var labelsSimilarity = similarity(labels[l]);
+	var ratioValuesIPs = ratioUnwanted(labels[l], 0);
 
-		if (last && !isISP) {
-			totalDistance += levensteinDistance(last, labels[l][c]);
-			if (!matched[labels[l]]) {
-				matched[labels[l]] = [];
-			}
-			matched[labels[l]].push(labels[l][c]);
-		}
-
-		last = labels[l][c];
-		/*
-		var isISP = ISPRegEx.test(labels[l][c]);
-		var isCompany = companyRegEx.test(labels[l][c]);
-		//if(l==38 && isISP && !isCompany) console.log(labels[l][c], isISP, !isCompany)
-		if (isISP && !isCompany) {
-			// looks like ISP
-			match++;
-		} else {
-			// looks like company
-			match--;
-		}
-		*/
-	}
-
-	if (totalDistance <= distanceThreshhold) {
-		console.log('Label ' + l + ' is an ISP. Certainty: ' + totalDistance + '. Example: ' + labels[l][c])
+	var averageGuess = 1 - Math.round(100 * (labelsSimilarity + ratioValuesIPs) / 2) / 100;
+	if (averageGuess >= 0.69) {
+		console.log('', l);
+		//console.log('Label ' + l + ' is a company. Certainty: ' + 100 * averageGuess + '%. Example: ' + labels[l][0])
 	} else {
-		console.log('Label ' + l + ' is a company. Certainty: ' + totalDistance + '. Example: ' + labels[l][c])
+		//console.log('Label ' + l + ' is an ISP. Certainty: ' + 100 * averageGuess + '%. Example: ' + labels[l][0])
 	}
-	console.log(matched[0])
-	//console.log('Similarity: ' + totalDistance);
-	/*
-	if (match >= 0) {
-		console.log('Label ' + l + ' is a ISP. Certainty: ' + Math.round(100 * Math.abs(match) / total) + '%. Example: ' + labels[l][c])
-	} else {
-		console.log('Label ' + l + ' is a company. Certainty: ' + Math.round(100 * Math.abs(match) / total) + '%. Example: ' + labels[l][c])
-	}
-	*/
 }
+console.log('-- Done')
