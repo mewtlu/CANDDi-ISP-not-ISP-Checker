@@ -1,3 +1,13 @@
+/**
+ *
+ *	ISP-not-ISP Checker
+ *		by Luke Roberts
+ *
+ *	Usage:
+ *	 node main.js <country code> <row> <debug level> <max rows>
+ *
+ */
+
 const fs = require('fs');
 const csvParse = require('csv-parse/lib/sync');
 const dataManip = require('./lib/dataManip');
@@ -16,7 +26,7 @@ const cwdPath = process.cwd();
  */
 //const companyLikelinessThreshold = 0.69;
 const IPsThreshold = 0.10;
-const similarityThreshold = 0.71;
+const similarityThreshold = 0.6;
 
 /* colour codes */
 const colours = {
@@ -91,10 +101,11 @@ if (max === undefined) {
 }
 
 console.log('\n\n-- Starting check with options:');
-console.log('  - Debug:', greenTextCode + DEBUG + resetCode);
-console.log('  - In country:', greenTextCode + inCountry + resetCode);
-console.log('  - Max:', greenTextCode + max + resetCode);
-console.log('  - One row:', greenTextCode + oneRowOnly + resetCode);
+console.log('  - Debug:', colours.green + DEBUG + colours.reset);
+console.log('  - In country:', colours.green + inCountry + colours.reset);
+console.log('  - Max:', colours.green + max + colours.reset);
+console.log('  - One row:', colours.green + oneRowOnly + colours.reset);
+console.log('  - Thresholds: I', IPsThreshold + '/S' + similarityThreshold);
 
 /* Generate realTypes for later comparison */
 for (var f in realTypesFileData) {
@@ -138,6 +149,7 @@ for (var l in labels) {
 	*/
 	if (oneRowOnly) {
 		if (l != oneRowOnly) {
+			delete realTypes[realTypes.indexOf(l)];
 			continue;
 		}
 	}
@@ -185,6 +197,7 @@ fs.writeFile(outPath, companiesCSVStr, function(err) {
 });
 
 if (realTypesFileData && realTypesFileData.length > 0) {
+
 	for (var c in goodLabels) {
 		if (realTypes.indexOf(goodLabels[c]) === -1) {
 			// a label we thought was a company is not in the check list
@@ -220,7 +233,7 @@ if (realTypesFileData && realTypesFileData.length > 0) {
 		*/
 
 		var outTable = new Table;
-		var labelsColHeader = resetCode + 'Labels:' + '\n';
+		var labelsColHeader = colours.reset + 'Labels:' + '\n';
 
 		discrepancies.forEach(function(row) {
 			//outTable.cell('Type', (row.type === '+' ? colours.green : colours.red) + row.type);
