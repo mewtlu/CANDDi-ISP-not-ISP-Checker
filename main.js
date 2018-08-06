@@ -1,6 +1,7 @@
 const fs = require('fs');
 const csvParse = require('csv-parse/lib/sync');
 const dataManip = require('./lib/dataManip');
+const Table = require('easy-table');
 const similarity = dataManip.similarity;
 const ratioUnwanted = dataManip.ratioUnwanted;
 const cwdPath = process.cwd();
@@ -15,24 +16,56 @@ const cwdPath = process.cwd();
  */
 //const companyLikelinessThreshold = 0.69;
 const IPsThreshold = 0.10;
-const similarityThreshold = 0.70;
+const similarityThreshold = 0.71;
 
-var realTypesBuffer = fs.readFileSync(cwdPath + "/data/types.csv");
-var realTypesFileData = realTypesBuffer.toString().split('\n');;
-var realTypes = {};
 
-const inCountry = 'fr';
-
-var dataBuffer = fs.readFileSync(cwdPath + '/data/' + inCountry + '.csv');
-var dataFileData = csvParse(dataBuffer.toString(), { columns: true });
 var labels = {};
 var typesAttempt = {};
 var companyRegEx = /\(c[0-9]{6,}\)/;
 var loopCounter = 0;
 
-var oneRowOnly = process.argv[2];
-var DEBUG = process.argv[3];
-var max = process.argv[4];
+var inCountry = process.argv[2];
+var oneRowOnly = process.argv[3];
+var DEBUG = process.argv[4];
+var max = process.argv[5];
+
+if (oneRowOnly == 'false' || oneRowOnly == '0') {
+	oneRowOnly = false;
+}
+
+/* goodLabels is the list of labels we believe to contain companies, not ISPs/others */
+var goodLabels = [];
+
+/* for checking against real types file */
+var discrepancies = [];
+var added = 0;
+var removed = 0;
+
+if (inCountry === undefined) {
+	console.log('No input country set. Defaulting to FR.');
+	inCountry = 'fr';
+}
+
+try {
+	var realTypesFileName = cwdPath + '/data/' + inCountry + '-real.csv';
+	var realTypesBuffer = fs.readFileSync(realTypesFileName);
+	var realTypesFileData = realTypesBuffer.toString().split('\n');
+	var realTypes = [];
+} catch (e) {
+	console.log('- Warning: No real types file found (' + realTypesFileName + ')');
+}
+
+var dataBuffer = fs.readFileSync(cwdPath + '/data/' + inCountry + '.csv');
+var dataFileData = csvParse(dataBuffer.toString(), { columns: true });
+
+/* create a str to add each company to to write to the output CSV */
+var companiesCSVStr = '';
+var outPath = cwdPath + '/out/' + inCountry + '-result.csv';
+
+/* colour codes */
+var greenTextCode = '\x1b[32m';
+var redTextCode = '\x1b[31m';
+var resetCode = '\x1b[0m';
 
 if (DEBUG === undefined) {
 	if (oneRowOnly) {
@@ -40,26 +73,32 @@ if (DEBUG === undefined) {
 	} else {
 		DEBUG = false;
 	}
+} else if (DEBUG === 'false' || DEBUG === '0') {
+	DEBUG = false;
 }
 
 if (max === undefined) {
 	//max = Infinity;
-	max = 450;
+	max = 150;
 }
 
-/* goodCompanies is the list of labels we believe to contain companies, not ISPs/others */
-var goodCompanies = [];
+console.log('\n\n-- Starting check with options:');
+console.log('  - Debug:', greenTextCode + DEBUG + resetCode);
+console.log('  - In country:', greenTextCode + inCountry + resetCode);
+console.log('  - Max:', greenTextCode + max + resetCode);
+console.log('  - One row:', greenTextCode + oneRowOnly + resetCode);
 
 /* Generate realTypes for later comparison */
 for (var f in realTypesFileData) {
-	var labelType = realTypesFileData[f].split('    ');
+	var labelType = realTypesFileData[f].split('\t');
 
-	if (labelType[0] && labelType[1] && labelType[1] !== 'Mixed') {
-		realTypes[labelType[0]] = labelType[1];
+	//if (labelType[0] && labelType[1] && labelType[1] !== 'Mixed') {
+	if (labelType[0]) {
+		realTypes.push(labelType[0]);
 	}
 }
 
-console.log('Data file read.');
+console.log('- Data file read.');
 
 for (var r in dataFileData) {
 	var data = dataFileData[r];
@@ -78,7 +117,7 @@ for (var r in dataFileData) {
 	labels[label].push(companyName);
 }
 
-console.log('Company list created.');
+console.log('- Company list created.');
 
 //console.log('-- Companies:')
 
@@ -114,7 +153,7 @@ for (var l in labels) {
 
 	if (belowThreshold) {
 		/* Company */
-		goodCompanies.push(l);
+		goodLabels.push(l);
 		//console.log(l);
 		//console.log('Label ' + l + ' is a company. Certainty: ' + 100 * averageGuess + '%. Example: ' + labels[l][0])
 	} else {
@@ -123,20 +162,68 @@ for (var l in labels) {
 	}
 }
 
-var companiesCSVStr = '';
 
-for (c in goodCompanies) {
-	companiesCSVStr += goodCompanies[c] + '\n';
+	console.log(goodLabels)
+for (var c in goodLabels) {
+	companiesCSVStr += goodLabels[c] + '\n';
 }
-
-var outPath = cwdPath + '/out/' + inCountry + '-result.csv';
 
 fs.writeFile(outPath, companiesCSVStr, function(err) {
     if (err) {
-        console.log('Error saving file:\n', err);
+        console.log('- Error saving file:\n', err);
     }
 
-    console.log('Companies saved to ' + outPath + '.');
+    console.log('- Companies saved to ' + outPath + '.');
 
-	console.log('-- Done with debug level ' + DEBUG + '.');
+	console.log('-- Done' + (DEBUG ? ' (with debug level ' + DEBUG + ')' : '') + '.');
 });
+
+if (realTypesFileData && realTypesFileData.length > 0) {
+	for (var c in goodLabels) {
+		if (realTypes.indexOf(goodLabels[c]) === -1) {
+			// a label we thought was a company is not in the check list
+			discrepancies.push({type: '+', label: goodLabels[c]});
+			added++;
+		}
+	}
+	for (var c in realTypes) {
+		if (goodLabels.indexOf(realTypes[c]) === -1) {
+			// a label we thought was an ISP is in the check list as a company
+			discrepancies.push({type: '-', label: realTypes[c]});
+			removed++;
+		}
+	}
+
+	if (discrepancies.length > 0) {
+		console.log('- Discrepancies found:');
+
+		/*
+		var discrepanciesSorted = discrepancies.sort(function(a, b) {
+			if (a.label > b.label) {
+				return true
+			}
+			return false;
+		})
+
+		for (var d in discrepanciesSorted) {
+			if (discrepancies[d] && discrepancies[d].label) {
+				outStr += (discrepancies[d].type === '+' ? greenTextCode : redTextCode) + discrepancies[d].label + '\t\t';
+			}
+		}
+		*/
+
+		var outTable = new Table;
+		var labelsColHeader = resetCode + 'Labels:' + '\n';
+
+		discrepancies.forEach(function(row) {
+			//outTable.cell('Type', (row.type === '+' ? greenTextCode : redTextCode) + row.type);
+			outTable.cell(labelsColHeader, (row.type === '+' ? greenTextCode : redTextCode) + row.label + '\t\t');
+			outTable.newRow();
+		});
+
+		outTable.sort(labelsColHeader);
+		console.log(outTable.printTransposed());
+
+		console.log(greenTextCode + added + resetCode + ' added, ' + redTextCode + removed + resetCode + ' removed.');
+	}
+}
