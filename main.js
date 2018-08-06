@@ -4,7 +4,7 @@
  *		by Luke Roberts
  *
  *	Usage:
- *	 node main.js <country code> <row> <debug level> <max rows>
+ *	 node main.js <country code> <max rows> <row> <debug level>
  *
  */
 
@@ -48,9 +48,9 @@ usageHelpStr += '\nRow, debug level, max rows are all optional, to skip an optio
 
 
 var inCountry = process.argv[2];
-var oneRowOnly = process.argv[3];
-var DEBUG = process.argv[4];
-var max = process.argv[5];
+var max = process.argv[3];
+var oneRowOnly = process.argv[4];
+var DEBUG = process.argv[5];
 
 if (oneRowOnly == 'false' || oneRowOnly == '0') {
 	oneRowOnly = false;
@@ -100,7 +100,7 @@ if (max === undefined) {
 	max = 150;
 }
 
-console.log('\n\n-- Starting check with options:');
+console.log('\n-- Starting check with options:');
 console.log('  - Debug:', colours.green + DEBUG + colours.reset);
 console.log('  - In country:', colours.green + inCountry + colours.reset);
 console.log('  - Max:', colours.green + max + colours.reset);
@@ -149,7 +149,9 @@ for (var l in labels) {
 	*/
 	if (oneRowOnly) {
 		if (l != oneRowOnly) {
-			delete realTypes[realTypes.indexOf(l)];
+			if (realTypes) {
+				delete realTypes[realTypes.search(l)];
+			}
 			continue;
 		}
 	}
@@ -157,6 +159,7 @@ for (var l in labels) {
 	if (l > max) {
 		break;
 	}
+
 
 	var labelsSimilarity = similarity(labels[l]);
 	var ratioValuesIPs = ratioUnwanted(labels[l], DEBUG);
@@ -167,8 +170,8 @@ for (var l in labels) {
 	var belowThreshold = similarityBelowThreshold && IPsBelowThreshold;
 
 	if (DEBUG) {
-		console.log(IPsBelowThreshold, belowThreshold)
 		console.log('\n- DEBUG: Label ' + l + ' scored (S:' + labelsSimilarity + ', I:' + ratioValuesIPs + '), which is ' + (belowThreshold ? 'below' : 'above') + ' the threshold and therefore a' + (belowThreshold ? ' company' : 'n ISP') + '.');
+		console.log(IPsBelowThreshold, belowThreshold)
 	}
 
 	if (belowThreshold) {
@@ -193,7 +196,7 @@ fs.writeFile(outPath, companiesCSVStr, function(err) {
 
     console.log('- Companies saved to ' + outPath + '.');
 
-	console.log('-- Done' + (DEBUG ? ' (with debug level ' + DEBUG + ')' : '') + '.');
+	console.log('-- Done' + (DEBUG ? ' (with debug level ' + DEBUG + ')' : '') + '.\n');
 });
 
 if (realTypesFileData && realTypesFileData.length > 0) {
@@ -247,3 +250,5 @@ if (realTypesFileData && realTypesFileData.length > 0) {
 		console.log(colours.green + added + colours.reset + ' added, ' + colours.red + removed + colours.reset + ' removed.');
 	}
 }
+
+console.log('\n')

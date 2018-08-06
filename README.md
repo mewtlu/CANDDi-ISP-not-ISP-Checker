@@ -6,7 +6,7 @@ This program is _supposed_ to decide whether a huge string of csv data contains 
 
 ## Usage
 
-`node main.js <country code> <row> <debug level> <max rows>` 
+`node main.js <country code> <max rows> <row> <debug level>` 
 Row, debug level, max rows are all optional, to skip an option simply use `false` or `0`  
 
 ## Known bugs
