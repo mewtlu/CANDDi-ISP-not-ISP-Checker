@@ -18,11 +18,24 @@ const cwdPath = process.cwd();
 const IPsThreshold = 0.10;
 const similarityThreshold = 0.71;
 
+/* colour codes */
+const colours = {
+	reset: '\x1b[0m',
+	green: '\x1b[32m',
+	red: '\x1b[31m',
+	black: '\x1b[30m',
+	whiteBG: '\x1b[47m'
+}
 
 var labels = {};
 var typesAttempt = {};
 var companyRegEx = /\(c[0-9]{6,}\)/;
 var loopCounter = 0;
+
+var usageHelpStr = '\n' + colours.whiteBG + colours.black + '-- Usage:';
+usageHelpStr += '\n  node main.js <country code> <row> <debug level> <max rows>';
+usageHelpStr += '\nRow, debug level, max rows are all optional, to skip an option simply use `false` or `0`';
+
 
 var inCountry = process.argv[2];
 var oneRowOnly = process.argv[3];
@@ -42,8 +55,8 @@ var added = 0;
 var removed = 0;
 
 if (inCountry === undefined) {
-	console.log('No input country set. Defaulting to FR.');
-	inCountry = 'fr';
+	console.log(colours.red + 'No input country set.', usageHelpStr);
+	process.exit();
 }
 
 try {
@@ -61,11 +74,6 @@ var dataFileData = csvParse(dataBuffer.toString(), { columns: true });
 /* create a str to add each company to to write to the output CSV */
 var companiesCSVStr = '';
 var outPath = cwdPath + '/out/' + inCountry + '-result.csv';
-
-/* colour codes */
-var greenTextCode = '\x1b[32m';
-var redTextCode = '\x1b[31m';
-var resetCode = '\x1b[0m';
 
 if (DEBUG === undefined) {
 	if (oneRowOnly) {
@@ -162,8 +170,6 @@ for (var l in labels) {
 	}
 }
 
-
-	console.log(goodLabels)
 for (var c in goodLabels) {
 	companiesCSVStr += goodLabels[c] + '\n';
 }
@@ -186,6 +192,7 @@ if (realTypesFileData && realTypesFileData.length > 0) {
 			added++;
 		}
 	}
+
 	for (var c in realTypes) {
 		if (goodLabels.indexOf(realTypes[c]) === -1) {
 			// a label we thought was an ISP is in the check list as a company
@@ -207,7 +214,7 @@ if (realTypesFileData && realTypesFileData.length > 0) {
 
 		for (var d in discrepanciesSorted) {
 			if (discrepancies[d] && discrepancies[d].label) {
-				outStr += (discrepancies[d].type === '+' ? greenTextCode : redTextCode) + discrepancies[d].label + '\t\t';
+				outStr += (discrepancies[d].type === '+' ? colours.green : colours.red) + discrepancies[d].label + '\t\t';
 			}
 		}
 		*/
@@ -216,14 +223,14 @@ if (realTypesFileData && realTypesFileData.length > 0) {
 		var labelsColHeader = resetCode + 'Labels:' + '\n';
 
 		discrepancies.forEach(function(row) {
-			//outTable.cell('Type', (row.type === '+' ? greenTextCode : redTextCode) + row.type);
-			outTable.cell(labelsColHeader, (row.type === '+' ? greenTextCode : redTextCode) + row.label + '\t\t');
+			//outTable.cell('Type', (row.type === '+' ? colours.green : colours.red) + row.type);
+			outTable.cell(labelsColHeader, (row.type === '+' ? colours.green : colours.red) + row.label + '\t\t');
 			outTable.newRow();
 		});
 
 		outTable.sort(labelsColHeader);
 		console.log(outTable.printTransposed());
 
-		console.log(greenTextCode + added + resetCode + ' added, ' + redTextCode + removed + resetCode + ' removed.');
+		console.log(colours.green + added + colours.reset + ' added, ' + colours.red + removed + colours.reset + ' removed.');
 	}
 }
