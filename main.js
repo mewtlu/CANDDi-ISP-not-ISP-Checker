@@ -26,7 +26,7 @@ const cwdPath = process.cwd();
  */
 //const companyLikelinessThreshold = 0.69;
 const IPsThreshold = 0.10;
-const similarityThreshold = 0.6;
+const similarityThreshold = 0.69;
 
 /* colour codes */
 const colours = {
@@ -70,7 +70,7 @@ if (inCountry === undefined) {
 }
 
 try {
-	var realTypesFileName = cwdPath + '/data/' + inCountry + '-real.csv';
+	var realTypesFileName = cwdPath + '/real/' + inCountry + '-real.csv';
 	var realTypesBuffer = fs.readFileSync(realTypesFileName);
 	var realTypesFileData = realTypesBuffer.toString().split('\n');
 	var realTypes = [];
@@ -105,7 +105,7 @@ console.log('  - Debug:', colours.green + DEBUG + colours.reset);
 console.log('  - In country:', colours.green + inCountry + colours.reset);
 console.log('  - Max:', colours.green + max + colours.reset);
 console.log('  - One row:', colours.green + oneRowOnly + colours.reset);
-console.log('  - Thresholds: I', IPsThreshold + '/S' + similarityThreshold);
+console.log('  - Thresholds: (S:' + similarityThreshold + ', I:' + IPsThreshold + ')');
 
 /* Generate realTypes for later comparison */
 for (var f in realTypesFileData) {
