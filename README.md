@@ -12,6 +12,7 @@ Row, debug level, max rows are all optional, to skip an option simply use `false
 ## Known bugs
 
 Lots.
++ Currently the `max` parameter on the command doesn't appear to work - seems to break the program?
 
 ## Planned features
 
