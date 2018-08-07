@@ -97,7 +97,9 @@ if (DEBUG === undefined) {
 
 if (max === undefined) {
 	//max = Infinity;
-	max = 150;
+	max = 500;
+} else {
+	max = max.toString();
 }
 
 console.log('\n-- Starting check with options:');
@@ -159,7 +161,6 @@ for (var l in labels) {
 	if (l > max) {
 		break;
 	}
-
 
 	var labelsSimilarity = similarity(labels[l]);
 	var ratioValuesIPs = ratioUnwanted(labels[l], DEBUG);
