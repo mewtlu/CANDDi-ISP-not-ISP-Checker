@@ -29,6 +29,7 @@ Some.
 + node
 + npm
 
-### Used packages
+### Used NPM packages
 + [csv-parse](http://csv.adaltas.com/)
 + [string-similarity](https://www.npmjs.com/package/string-similarity)
++ [easy-table](https://github.com/eldargab/easy-table)    
